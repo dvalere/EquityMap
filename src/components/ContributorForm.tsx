@@ -242,7 +242,7 @@ const ContributorForm = ({ fabOffset = false }: { fabOffset?: boolean }) => {
                 </div>
                 <div>
                   <p className="text-sm font-display font-semibold text-foreground">Submitting resource...</p>
-                  <p className="text-xs text-muted-foreground mt-1">Verifying and adding to the map</p>
+                  <p className="text-xs text-muted-foreground mt-1">Sending for admin review</p>
                 </div>
               </div>
             )}
@@ -255,7 +255,7 @@ const ContributorForm = ({ fabOffset = false }: { fabOffset?: boolean }) => {
                 </div>
                 <div>
                   <p className="text-sm font-display font-semibold text-foreground">Resource Submitted!</p>
-                  <p className="text-xs text-muted-foreground mt-1">Your contribution has been added to the map. Thank you for helping your community.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Your submission will be reviewed by an admin before appearing on the map. Thank you for helping your community.</p>
                 </div>
                 <button
                   onClick={() => setOpen(false)}
