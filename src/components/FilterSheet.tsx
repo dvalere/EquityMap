@@ -3,8 +3,6 @@ import { Filter, X, ChevronUp } from "lucide-react";
 
 const FILTERS = [
   { id: "Accepts EBT", label: "Accepts EBT", icon: "💳" },
-  { id: "No ID Required", label: "No ID Required", icon: "🆓" },
-  { id: "Student Discounts", label: "Student Discounts", icon: "🎓" },
   { id: "Accepts Medicaid", label: "Accepts Medicaid", icon: "🏥" },
   { id: "Walk-ins OK", label: "Walk-ins OK", icon: "🚶" },
 ];
