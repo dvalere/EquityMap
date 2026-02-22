@@ -172,8 +172,8 @@ const AIChatBot = ({ fabOffset = false }: { fabOffset?: boolean }) => {
     content: t("chat.welcome"),
     quickReplies: [
       { label: t("chat.screener"), value: "__screener__" },
-      { label: t("chat.work"), value: "What is the 80-hour work rule?" },
-      { label: t("chat.health"), value: "Where can I find healthcare in DC?" },
+      { label: t("chat.work"), value: t("chat.work") },
+      { label: t("chat.health"), value: t("chat.health") },
     ],
   });
 
