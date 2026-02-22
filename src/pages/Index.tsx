@@ -7,14 +7,19 @@ import ContributorForm from "@/components/ContributorForm";
 
 const Index = () => {
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-background">
       <AppHeader />
       <MapDashboard activeFilters={activeFilters} />
-      <FilterSheet activeFilters={activeFilters} onFiltersChange={setActiveFilters} />
-      <AIChatBot />
-      <ContributorForm />
+      <FilterSheet
+        activeFilters={activeFilters}
+        onFiltersChange={setActiveFilters}
+        onOpenChange={setFiltersOpen}
+      />
+      <AIChatBot fabOffset={filtersOpen} />
+      <ContributorForm fabOffset={filtersOpen} />
     </div>
   );
 };

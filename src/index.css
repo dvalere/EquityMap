@@ -124,4 +124,29 @@
   .animate-scan {
     animation: scan 2s ease-in-out infinite;
   }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(4px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+
+  .animate-shake {
+    animation: shake 0.4s ease-in-out;
+  }
+}
+
+/* Leaflet popup styling overrides */
+.leaflet-popup-content-wrapper {
+  @apply rounded-xl shadow-lg border border-border/50 bg-white;
+  padding: 0;
+}
+.leaflet-popup-content {
+  margin: 12px 14px;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+.leaflet-popup-tip {
+  @apply bg-white;
 }

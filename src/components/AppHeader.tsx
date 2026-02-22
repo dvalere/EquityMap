@@ -12,7 +12,7 @@ const AppHeader = () => {
             <h1 className="text-lg font-display font-bold text-foreground tracking-tight">
               Equity<span className="text-gradient">Map</span>
             </h1>
-            <p className="text-[10px] text-muted-foreground">Wards 7 & 8 • Washington, D.C.</p>
+            <p className="text-[10px] text-muted-foreground">Washington, D.C.</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-pin-food/10 border border-pin-food/20">
@@ -39,7 +39,7 @@ const AppHeader = () => {
             <div className="mt-3 space-y-2">
               <h3 className="text-sm font-display font-semibold text-foreground">Truth & Service</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                EquityMap helps D.C. residents navigate "Benefit Deserts" caused by the 2026 federal budget cuts (OBBBA). 
+                EquityMap helps D.C. residents navigate "Benefit Deserts" caused by the 2026 federal budget cuts. 
                 Built for BisonHacks 2026, this tool leverages AI to connect communities in Wards 7 & 8 with food assistance, 
                 healthcare, and verified community resources — because everyone deserves equitable access.
               </p>
@@ -62,14 +62,6 @@ const AppHeader = () => {
         <div className="flex items-center gap-2.5">
           <div className="w-3.5 h-3.5 rounded-full bg-pin-health" />
           <span className="text-xs text-foreground font-medium">Healthcare</span>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <div className="w-3.5 h-3.5 rounded-full bg-pin-community" />
-          <span className="text-xs text-foreground font-medium">Community</span>
-        </div>
-        <div className="flex items-center gap-2.5 pt-2 border-t border-border/50">
-          <div className="w-3.5 h-3.5 rounded-full bg-heat-high/60" />
-          <span className="text-xs text-foreground font-medium">High Risk Zone</span>
         </div>
       </div>
     </>

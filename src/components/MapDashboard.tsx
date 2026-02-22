@@ -1,180 +1,436 @@
-import { useState } from "react";
-import { MapPin, Navigation, X } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
-import mapBg from "@/assets/map-bg.jpg";
+import { useState, useEffect } from "react";
+import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import { Navigation, FileText, ShieldCheck, X, BookOpen } from "lucide-react";
+import Papa from "papaparse";
+import "leaflet/dist/leaflet.css";
 
 interface ResourcePin {
   id: string;
-  type: "food" | "health" | "community";
+  type: "food" | "health";
   label: string;
-  x: number;
-  y: number;
+  lat: number;
+  lng: number;
   detail: string;
+  address: string;
   tags: string[];
+  storeType: string;
+  extra?: {
+    phone?: string;
+    services?: string;
+    hours?: string;
+    languages?: string;
+    insurance?: string;
+    walkIn?: string;
+    webUrl?: string;
+  };
 }
-
-const PINS: ResourcePin[] = [
-  { id: "1", type: "food", label: "Ward 8 Food Pantry", x: 35, y: 55, detail: "Open Mon-Fri 9am-5pm", tags: ["Accepts EBT", "No ID Required"] },
-  { id: "2", type: "health", label: "Unity Health Clinic", x: 55, y: 40, detail: "Walk-ins accepted, Medicaid OK", tags: ["Accepts EBT"] },
-  { id: "3", type: "community", label: "Community Fridge", x: 62, y: 65, detail: "24/7 access, community-verified", tags: ["No ID Required"] },
-  { id: "4", type: "food", label: "SNAP Enrollment Center", x: 28, y: 38, detail: "Help with 2026 applications", tags: ["Student Discounts"] },
-  { id: "5", type: "health", label: "Mobile Health Van", x: 72, y: 48, detail: "Tues & Thurs, 10am-4pm", tags: ["No ID Required"] },
-  { id: "6", type: "community", label: "Howard Student Aid Hub", x: 48, y: 30, detail: "Textbooks, meals, mentoring", tags: ["Student Discounts"] },
-  { id: "7", type: "food", label: "Martha's Table", x: 42, y: 72, detail: "Hot meals daily, no questions asked", tags: ["No ID Required"] },
-  { id: "8", type: "health", label: "Ward 7 Wellness Center", x: 78, y: 35, detail: "Mental health + primary care", tags: ["Accepts EBT"] },
-];
-
-const HEAT_ZONES = [
-  { x: 30, y: 50, size: 180, opacity: 0.35 },
-  { x: 65, y: 60, size: 140, opacity: 0.25 },
-  { x: 45, y: 70, size: 160, opacity: 0.3 },
-  { x: 75, y: 45, size: 120, opacity: 0.2 },
-];
-
-const pinColors = {
-  food: "bg-pin-food",
-  health: "bg-pin-health",
-  community: "bg-pin-community",
-};
-
-const pinRingColors = {
-  food: "ring-pin-food",
-  health: "ring-pin-health",
-  community: "ring-pin-community",
-};
 
 interface MapDashboardProps {
   activeFilters: string[];
 }
 
-const MapDashboard = ({ activeFilters }: MapDashboardProps) => {
-  const [selectedPin, setSelectedPin] = useState<ResourcePin | null>(null);
-  const isMobile = useIsMobile();
+const DC_CENTER: [number, number] = [38.9072, -77.0369];
+const DEFAULT_ZOOM = 12;
 
-  const filteredPins = activeFilters.length === 0
-    ? PINS
-    : PINS.filter(p => p.tags.some(t => activeFilters.includes(t)));
+const FOOD_EDUCATION: Record<string, { title: string; body: string; tip: string }> = {
+  "Supermarket": {
+    title: "Supermarket — SNAP Authorized",
+    body: "Full-service grocery store accepting EBT/SNAP. You can purchase fresh produce, dairy, meats, bread, cereals, and non-alcoholic beverages. SNAP cannot be used for prepared hot foods, alcohol, tobacco, or household items.",
+    tip: "Look for \"Double Up Food Bucks\" programs that match your SNAP dollars on fresh fruits and vegetables.",
+  },
+  "Super Store": {
+    title: "Super Store — SNAP Authorized",
+    body: "Large retail store with a grocery section that accepts EBT/SNAP. These stores often combine general merchandise with a full grocery department, offering competitive prices on bulk food items.",
+    tip: "The grocery section accepts SNAP, but non-food items at checkout must be paid separately.",
+  },
+  "Convenience Store": {
+    title: "Convenience Store — SNAP Authorized",
+    body: "Neighborhood store accepting EBT/SNAP for eligible food items. Selection may be limited compared to larger stores, but these locations are often closer to home and open extended hours.",
+    tip: "Prioritize staple items like bread, milk, eggs, and canned goods. Compare prices — convenience stores may charge more than supermarkets.",
+  },
+  "Combination Grocery/Other": {
+    title: "Combination Grocery — SNAP Authorized",
+    body: "A store that combines grocery items with other retail goods. The grocery section accepts EBT/SNAP for eligible food purchases including fresh and packaged foods.",
+    tip: "Only food items are SNAP-eligible. Keep grocery and non-grocery items separate at checkout.",
+  },
+  "Farmers' Market": {
+    title: "Farmers' Market — SNAP Authorized",
+    body: "Local farmers' market accepting EBT/SNAP. Shop directly from local growers for fresh, seasonal produce, baked goods, and other farm products. Many markets offer nutrition incentive programs.",
+    tip: "Ask about SNAP matching programs — many DC farmers' markets double your EBT dollars on fresh produce.",
+  },
+  "Medium Grocery Store": {
+    title: "Medium Grocery Store — SNAP Authorized",
+    body: "Mid-size grocery store accepting EBT/SNAP. Offers a solid selection of fresh produce, meats, dairy, and pantry staples at neighborhood-accessible prices.",
+    tip: "Check for weekly sales and store loyalty programs to stretch your SNAP benefits further.",
+  },
+  "Small Grocery Store": {
+    title: "Small Grocery Store — SNAP Authorized",
+    body: "Small neighborhood grocery accepting EBT/SNAP. These stores serve as essential food access points in communities where larger stores may be distant.",
+    tip: "Small groceries often carry culturally specific foods that larger chains don't stock.",
+  },
+  "Large Grocery Store": {
+    title: "Large Grocery Store — SNAP Authorized",
+    body: "Large grocery store with extensive food selection accepting EBT/SNAP. Expect a wide range of fresh produce, meats, bakery, deli, and packaged goods.",
+    tip: "Buy in bulk for staples like rice, beans, and frozen vegetables to maximize your monthly benefits.",
+  },
+  "Seafood Specialty": {
+    title: "Seafood Specialty — SNAP Authorized",
+    body: "Specialty seafood retailer accepting EBT/SNAP. Purchase fresh and frozen fish, shellfish, and other seafood products with your benefits.",
+    tip: "Fresh seafood is SNAP-eligible. Ask about daily catches for the best prices and freshness.",
+  },
+  "Meat/Poultry Specialty": {
+    title: "Meat & Poultry — SNAP Authorized",
+    body: "Specialty meat and poultry shop accepting EBT/SNAP. These stores often offer butcher-cut meats, poultry, and specialty cuts at competitive prices.",
+    tip: "Buying whole chickens or larger cuts and portioning at home is more cost-effective than pre-cut options.",
+  },
+  "Fruits/Veg Specialty": {
+    title: "Fruits & Vegetables — SNAP Authorized",
+    body: "Specialty produce store accepting EBT/SNAP. Focused selection of fresh fruits and vegetables, often with competitive pricing and seasonal variety.",
+    tip: "Seasonal produce is fresher and cheaper. Ask what's in season for the best deals.",
+  },
+};
+
+const FOOD_DEFAULT = {
+  title: "SNAP Authorized Retailer",
+  body: "This location is authorized to accept EBT/SNAP benefits for eligible food purchases. You can buy fruits, vegetables, meats, dairy, breads, cereals, and other food items.",
+  tip: "Remember: SNAP covers food items only. Hot prepared foods, alcohol, and non-food items are not eligible.",
+};
+
+const HEALTH_EDUCATION = {
+  title: "Primary Care Facility",
+  body: "Community health center providing primary care services. Many of these facilities operate on a sliding-scale fee basis, meaning your cost is adjusted based on your income. Most accept Medicaid, Medicare, and private insurance.",
+  tip: "Even without insurance, you can receive care. Ask about sliding-scale fees and enrollment assistance for Medicaid or DC Health Link.",
+};
+
+const getEducation = (pin: ResourcePin) => {
+  if (pin.type === "health") return HEALTH_EDUCATION;
+  return FOOD_EDUCATION[pin.storeType] || FOOD_DEFAULT;
+};
+
+const parseSnapCsv = async (): Promise<ResourcePin[]> => {
+  const res = await fetch("/DC_Active_SNAP_Retailers_2026.csv");
+  const text = await res.text();
+  const { data } = Papa.parse(text, { header: true, skipEmptyLines: true });
+
+  return (data as Record<string, string>[])
+    .map((row, i) => ({
+      id: `snap-${i}`,
+      type: "food" as const,
+      label: (row["Store Name"] || "SNAP Retailer").trim(),
+      lat: parseFloat(row["Latitude"]),
+      lng: parseFloat(row["Longitude"]),
+      detail: `${(row["Store Type"] || "").trim()} — ${(row["Street Number"] || "").trim()} ${(row["Street Name"] || "").trim()}`,
+      address: `${(row["Street Number"] || "").trim()} ${(row["Street Name"] || "").trim()}, Washington, DC ${(row["Zip Code"] || "").trim()}`,
+      tags: ["Accepts EBT"],
+      storeType: (row["Store Type"] || "").trim(),
+    }))
+    .filter((p) => !isNaN(p.lat) && !isNaN(p.lng));
+};
+
+const parseHealthCsv = async (): Promise<ResourcePin[]> => {
+  const res = await fetch("/Primary_Care_Facilities.csv");
+  const text = await res.text();
+  const { data } = Papa.parse(text, { header: true, skipEmptyLines: true });
+
+  return (data as Record<string, string>[])
+    .map((row, i) => {
+      const xMerc = parseFloat(row["X"]);
+      const yMerc = parseFloat(row["Y"]);
+      const lng = (xMerc / 20037508.34) * 180;
+      let lat = (yMerc / 20037508.34) * 180;
+      lat =
+        (180 / Math.PI) *
+        (2 * Math.atan(Math.exp((lat * Math.PI) / 180)) - Math.PI / 2);
+
+      const name = (row["DCGISPrimaryCarePtNAME"] || "Health Center").trim();
+      const addr = (row["DCGISPrimaryCarePtADDRESS"] || "").trim();
+      const ward = row["DCGISPrimaryCarePtWARD"] || "";
+      const facility = (row["DCGISPrimaryCarePtFACILITY_SETTING"] || "").trim();
+
+      const yes = (val: string | undefined) =>
+        (val || "").toLowerCase().includes("yes");
+      const clean = (val: string | undefined) => (val || "").trim() || undefined;
+
+      const tags: string[] = [];
+      if (yes(row["DCGISPrimaryCarePtMEDICAID"])) tags.push("Accepts Medicaid");
+      if (yes(row["DCGISPrimaryCarePtWALKIN_UNSCHEDULED"])) tags.push("Walk-ins OK");
+
+      const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
+      const dayAbbr = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      const hours = days
+        .map((d, idx) => {
+          const h = clean(row[`DCGISPRIMARY_CARE_INFOHOURS_${d}`]);
+          return h ? `${dayAbbr[idx]}: ${h}` : null;
+        })
+        .filter(Boolean)
+        .join(" | ");
+
+      const langs: string[] = [];
+      if (yes(row["DCGISPRIMARY_CARE_INFOENGLISH"])) langs.push("English");
+      if (yes(row["DCGISPRIMARY_CARE_INFOSPANISH"])) langs.push("Spanish");
+      if (yes(row["DCGISPRIMARY_CARE_INFOFRENCH"])) langs.push("French");
+      if (yes(row["DCGISPRIMARY_CARE_INFOAMHARIC"])) langs.push("Amharic");
+      if (yes(row["DCGISPRIMARY_CARE_INFOCHINESE_TRADITIONAL"])) langs.push("Chinese");
+      if (yes(row["DCGISPRIMARY_CARE_INFOKOREAN"])) langs.push("Korean");
+      if (yes(row["DCGISPRIMARY_CARE_INFOASL"])) langs.push("ASL");
+
+      return {
+        id: `health-${i}`,
+        type: "health" as const,
+        label: name,
+        lat,
+        lng,
+        detail: `${addr}${ward ? ` — Ward ${ward}` : ""}`,
+        address: `${addr}, Washington, DC`,
+        tags,
+        storeType: facility,
+        extra: {
+          phone: clean(row["DCGISPrimaryCarePtPHONE"]),
+          services: clean(row["DCGISPRIMARY_CARE_INFOMEDICAL_SERVICES_AVAILABLE"]),
+          hours: hours || undefined,
+          languages: langs.length > 0 ? langs.join(", ") : undefined,
+          insurance: clean(row["DCGISPrimaryCarePtINSURANCE_ACCEPTED"]),
+          walkIn: clean(row["DCGISPrimaryCarePtWALKIN_UNSCHEDULED"]),
+          webUrl: clean(row["DCGISPrimaryCarePtWEB_URL"]),
+        },
+      };
+    })
+    .filter((p) => !isNaN(p.lat) && !isNaN(p.lng));
+};
+
+const MARKER_COLORS = {
+  food: "#22c55e",
+  health: "#ef4444",
+};
+
+const MapDashboard = ({ activeFilters }: MapDashboardProps) => {
+  const [pins, setPins] = useState<ResourcePin[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [detailPin, setDetailPin] = useState<ResourcePin | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [snap, health] = await Promise.all([
+          parseSnapCsv(),
+          parseHealthCsv(),
+        ]);
+        setPins([...snap, ...health]);
+      } catch (err) {
+        console.error("Failed to load CSV data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const filteredPins =
+    activeFilters.length === 0
+      ? pins
+      : pins.filter((p) => p.tags.some((t) => activeFilters.includes(t)));
+
+  const education = detailPin ? getEducation(detailPin) : null;
 
   return (
     <div className="relative w-full h-full overflow-hidden">
-      {/* Map background */}
-      <img
-        src={mapBg}
-        alt="Washington DC aerial map"
-        className="absolute inset-0 w-full h-full object-cover"
-      />
-
-      {/* Light overlay */}
-      <div className="absolute inset-0 bg-background/30" />
-
-      {/* Heat zones */}
-      {HEAT_ZONES.map((zone, i) => (
-        <div
-          key={i}
-          className="absolute rounded-full animate-pulse-slow pointer-events-none"
-          style={{
-            left: `${zone.x}%`,
-            top: `${zone.y}%`,
-            width: zone.size,
-            height: zone.size,
-            transform: "translate(-50%, -50%)",
-            background: `radial-gradient(circle, hsla(0, 85%, 55%, ${zone.opacity}) 0%, hsla(30, 90%, 50%, ${zone.opacity * 0.5}) 50%, transparent 70%)`,
-          }}
-        />
-      ))}
-
-      {/* Resource Pins */}
-      {filteredPins.map((pin) => (
-        <button
-          key={pin.id}
-          className={`absolute z-10 group cursor-pointer`}
-          style={{ left: `${pin.x}%`, top: `${pin.y}%`, transform: "translate(-50%, -50%)" }}
-          onClick={() => setSelectedPin(selectedPin?.id === pin.id ? null : pin)}
-        >
-          <div className={`relative flex items-center justify-center w-8 h-8 rounded-full ${pinColors[pin.type]} ring-2 ${pinRingColors[pin.type]} ring-offset-2 ring-offset-background/50 shadow-lg transition-transform group-hover:scale-125`}>
-            <MapPin className="w-4 h-4 text-primary-foreground" />
+      {loading && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/60">
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            <p className="text-xs text-muted-foreground">
+              Loading resources…
+            </p>
           </div>
-          {/* Label on hover */}
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            <div className="glass rounded-md px-2 py-1 text-xs font-medium whitespace-nowrap text-foreground">
-              {pin.label}
-            </div>
-          </div>
-        </button>
-      ))}
-
-      {/* Click-anywhere-to-close overlay + detail panel */}
-      {selectedPin && (
-        <>
-          {/* Invisible overlay to close on any map click */}
-          <div
-            className="absolute inset-0 z-15"
-            onClick={() => setSelectedPin(null)}
-          />
-
-          {/* Desktop: right-side drawer (avoids legend on left) */}
-          {!isMobile ? (
-            <div className="absolute top-16 right-4 bottom-4 w-80 z-20 flex flex-col">
-              <div className="glass-strong rounded-xl p-5 space-y-3 shadow-xl">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-3.5 h-3.5 rounded-full ${pinColors[selectedPin.type]}`} />
-                    <h3 className="font-display font-semibold text-foreground text-sm">{selectedPin.label}</h3>
-                  </div>
-                  <button onClick={() => setSelectedPin(null)} className="p-1 rounded-lg hover:bg-secondary transition-colors">
-                    <X className="w-4 h-4 text-muted-foreground" />
-                  </button>
-                </div>
-                <p className="text-muted-foreground text-xs leading-relaxed">{selectedPin.detail}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedPin.tags.map(tag => (
-                    <span key={tag} className="text-[11px] px-2.5 py-1 rounded-full bg-primary/15 text-foreground border border-primary/25 font-medium">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-                <button className="w-full mt-1 text-xs font-semibold py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-accent transition-colors flex items-center justify-center gap-1.5">
-                  <Navigation className="w-3.5 h-3.5" />
-                  Get Directions
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* Mobile: bottom sheet */
-            <div className="absolute bottom-0 left-0 right-0 z-20">
-              <div className="glass-strong rounded-t-2xl p-5 pb-8 space-y-3 shadow-xl">
-                <div className="w-10 h-1 rounded-full bg-muted-foreground/30 mx-auto" />
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-3.5 h-3.5 rounded-full ${pinColors[selectedPin.type]}`} />
-                    <h3 className="font-display font-semibold text-foreground text-sm">{selectedPin.label}</h3>
-                  </div>
-                  <button onClick={() => setSelectedPin(null)} className="p-1 rounded-lg hover:bg-secondary transition-colors">
-                    <X className="w-4 h-4 text-muted-foreground" />
-                  </button>
-                </div>
-                <p className="text-muted-foreground text-xs leading-relaxed">{selectedPin.detail}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedPin.tags.map(tag => (
-                    <span key={tag} className="text-[11px] px-2.5 py-1 rounded-full bg-primary/15 text-foreground border border-primary/25 font-medium">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-                <button className="w-full mt-1 text-xs font-semibold py-3 rounded-lg bg-primary text-primary-foreground hover:bg-accent transition-colors flex items-center justify-center gap-1.5">
-                  <Navigation className="w-3.5 h-3.5" />
-                  Get Directions
-                </button>
-              </div>
-            </div>
-          )}
-        </>
+        </div>
       )}
 
-      {/* Map center marker */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-5 pointer-events-none">
-        <div className="w-3 h-3 rounded-full bg-primary/60 ring-4 ring-primary/20 animate-pulse" />
-      </div>
+      <MapContainer
+        center={DC_CENTER}
+        zoom={DEFAULT_ZOOM}
+        className="w-full h-full z-0"
+        zoomControl={false}
+        attributionControl={false}
+      >
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+        />
+
+        {filteredPins.map((pin) => (
+          <CircleMarker
+            key={pin.id}
+            center={[pin.lat, pin.lng]}
+            radius={7}
+            pathOptions={{
+              fillColor: MARKER_COLORS[pin.type],
+              color: "#fff",
+              weight: 2,
+              fillOpacity: 0.9,
+            }}
+          >
+            <Popup>
+              <div className="min-w-[200px] space-y-2 py-1">
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-3 h-3 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: MARKER_COLORS[pin.type] }}
+                  />
+                  <p className="font-semibold text-sm text-foreground leading-tight">
+                    {pin.label}
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground">{pin.detail}</p>
+                <div className="flex flex-wrap gap-1">
+                  {pin.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-foreground border border-primary/20 font-medium"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${pin.lat},${pin.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 text-[11px] font-semibold py-2 rounded-lg bg-primary text-primary-foreground hover:bg-accent transition-colors flex items-center justify-center gap-1"
+                  >
+                    <Navigation className="w-3 h-3" />
+                    Directions
+                  </a>
+                  <button
+                    onClick={() => setDetailPin(pin)}
+                    className="flex-1 text-[11px] font-semibold py-2 rounded-lg bg-secondary text-secondary-foreground hover:bg-muted transition-colors flex items-center justify-center gap-1 border border-border"
+                  >
+                    <FileText className="w-3 h-3" />
+                    Details
+                  </button>
+                </div>
+              </div>
+            </Popup>
+          </CircleMarker>
+        ))}
+      </MapContainer>
+
+      {/* Pin count badge */}
+      {!loading && (
+        <div className="absolute bottom-4 left-4 z-10 glass rounded-xl px-3 py-2 flex items-center gap-2">
+          <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+          <span className="text-xs font-medium text-foreground">
+            {filteredPins.length} verified resources
+          </span>
+        </div>
+      )}
+
+      {/* Education detail panel */}
+      {detailPin && education && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-background/60 backdrop-blur-sm"
+            onClick={() => setDetailPin(null)}
+          />
+          <div className="relative glass-strong rounded-2xl p-6 max-w-md w-full space-y-4 shadow-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-primary" />
+                <h2 className="text-sm font-display font-bold text-foreground">
+                  {education.title}
+                </h2>
+              </div>
+              <button
+                onClick={() => setDetailPin(null)}
+                className="p-1 rounded-lg hover:bg-secondary transition-colors"
+              >
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div
+                className="w-3 h-3 rounded-full"
+                style={{ backgroundColor: MARKER_COLORS[detailPin.type] }}
+              />
+              <span className="text-xs font-medium text-foreground">
+                {detailPin.label}
+              </span>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {education.body}
+            </p>
+
+            {detailPin.extra && (
+              <div className="space-y-2 pt-2 border-t border-border/50">
+                {detailPin.extra.phone && (
+                  <div>
+                    <p className="text-[11px] font-semibold text-foreground">Phone</p>
+                    <a href={`tel:${detailPin.extra.phone}`} className="text-xs text-primary hover:underline">{detailPin.extra.phone}</a>
+                  </div>
+                )}
+                {detailPin.extra.services && (
+                  <div>
+                    <p className="text-[11px] font-semibold text-foreground">Services</p>
+                    <p className="text-xs text-muted-foreground">{detailPin.extra.services}</p>
+                  </div>
+                )}
+                {detailPin.extra.hours && (
+                  <div>
+                    <p className="text-[11px] font-semibold text-foreground">Hours</p>
+                    <p className="text-xs text-muted-foreground">{detailPin.extra.hours}</p>
+                  </div>
+                )}
+                {detailPin.extra.languages && (
+                  <div>
+                    <p className="text-[11px] font-semibold text-foreground">Languages</p>
+                    <p className="text-xs text-muted-foreground">{detailPin.extra.languages}</p>
+                  </div>
+                )}
+                {detailPin.extra.insurance && (
+                  <div>
+                    <p className="text-[11px] font-semibold text-foreground">Insurance</p>
+                    <p className="text-xs text-muted-foreground">{detailPin.extra.insurance}</p>
+                  </div>
+                )}
+                {detailPin.extra.webUrl && (
+                  <div>
+                    <p className="text-[11px] font-semibold text-foreground">Website</p>
+                    <a href={detailPin.extra.webUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline break-all">{detailPin.extra.webUrl}</a>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="bg-primary/5 border border-primary/15 rounded-xl p-3">
+              <p className="text-[11px] font-semibold text-primary mb-1">Tip</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {education.tip}
+              </p>
+            </div>
+
+            <p className="text-xs text-muted-foreground">{detailPin.address}</p>
+
+            <div className="flex gap-2 pt-1">
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${detailPin.lat},${detailPin.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-accent transition-colors text-center"
+              >
+                Get Directions
+              </a>
+              <button
+                onClick={() => setDetailPin(null)}
+                className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-secondary text-secondary-foreground hover:bg-muted transition-colors border border-border"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

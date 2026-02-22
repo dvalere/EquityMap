@@ -5,15 +5,24 @@ const FILTERS = [
   { id: "Accepts EBT", label: "Accepts EBT", icon: "💳" },
   { id: "No ID Required", label: "No ID Required", icon: "🆓" },
   { id: "Student Discounts", label: "Student Discounts", icon: "🎓" },
+  { id: "Accepts Medicaid", label: "Accepts Medicaid", icon: "🏥" },
+  { id: "Walk-ins OK", label: "Walk-ins OK", icon: "🚶" },
 ];
 
 interface FilterSheetProps {
   activeFilters: string[];
   onFiltersChange: (filters: string[]) => void;
+  onOpenChange?: (open: boolean) => void;
 }
 
-const FilterSheet = ({ activeFilters, onFiltersChange }: FilterSheetProps) => {
+const FilterSheet = ({ activeFilters, onFiltersChange, onOpenChange }: FilterSheetProps) => {
   const [open, setOpen] = useState(false);
+
+  const toggleOpen = () => {
+    const next = !open;
+    setOpen(next);
+    onOpenChange?.(next);
+  };
 
   const toggle = (id: string) => {
     onFiltersChange(
@@ -27,7 +36,7 @@ const FilterSheet = ({ activeFilters, onFiltersChange }: FilterSheetProps) => {
     <div className="fixed bottom-0 left-0 right-0 z-30 md:left-auto md:right-4 md:bottom-4 md:w-80">
       {/* Toggle bar */}
       <button
-        onClick={() => setOpen(!open)}
+        onClick={toggleOpen}
         className="w-full glass-strong flex items-center justify-between px-4 py-3 rounded-t-xl md:rounded-xl border-b border-border/50"
       >
         <div className="flex items-center gap-2">

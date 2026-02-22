@@ -10,7 +10,7 @@ const BENEFIT_OPTIONS: { value: BenefitType; label: string; emoji: string; color
   { value: "community", label: "Community Resource", emoji: "💙", color: "bg-pin-community" },
 ];
 
-const ContributorForm = () => {
+const ContributorForm = ({ fabOffset = false }: { fabOffset?: boolean }) => {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>(1);
   const [location, setLocation] = useState("");
@@ -41,7 +41,7 @@ const ContributorForm = () => {
       {!open && (
         <button
           onClick={() => { reset(); setOpen(true); }}
-          className="fixed bottom-20 left-4 z-40 w-14 h-14 rounded-full bg-secondary text-foreground shadow-lg flex items-center justify-center hover:scale-105 transition-transform border border-border"
+          className={`fixed left-4 z-40 w-14 h-14 rounded-full bg-secondary text-foreground shadow-lg flex items-center justify-center hover:scale-105 transition-all duration-300 border border-border ${fabOffset ? "bottom-52" : "bottom-20"}`}
           aria-label="Contribute a resource"
         >
           <Plus className="w-6 h-6" />
