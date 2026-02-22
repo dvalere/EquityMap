@@ -6,7 +6,7 @@ EquityMap is an AI-powered geospatial platform that helps Washington, D.C. resid
 
 ## The Problem
 
-Federal budget changes in 2026 have introduced stricter eligibility requirements for SNAP and Medicaid, disproportionately impacting residents in D.C.'s eastern wards. New work requirements (80 hours/month), tightened income thresholds, and reduced funding for community health programs have created "Benefit Deserts" — areas where residents struggle to locate and access the resources they need.
+Federal budget changes in 2026 have introduced stricter eligibility requirements for SNAP and Medicaid, projected to impact over 5 million Americans. New work requirements, tightened income thresholds, and reduced funding for community health programs have created "Benefit Deserts" areas where residents struggle to locate and access the resources they need. EquityMap starts with Washington, D.C. as a proof of concept.
 
 ## Our Solution
 
