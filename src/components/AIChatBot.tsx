@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Bot, X, Send, Loader2, ClipboardCheck } from "lucide-react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { useLang, type LangCode } from "@/hooks/lang-context";
 
 interface QuickReply {
   label: string;
@@ -13,7 +14,7 @@ interface Message {
   quickReplies?: QuickReply[];
 }
 
-const SYSTEM_INSTRUCTION =
+const BASE_INSTRUCTION =
   "You are EquityGuide (2026). You help DC residents understand the 2026 federal budget changes " +
   "and navigate SNAP, Medicaid, and community resources across Washington, D.C. " +
   "Key facts: New rules introduce an 80-hour/month work requirement for SNAP benefits for adults 18-59. " +
@@ -22,12 +23,27 @@ const SYSTEM_INSTRUCTION =
   "Rules: Keep responses concise (under 150 words). Never invent URLs or links. Never make up acronym definitions. " +
   "If unsure about a detail, say so. Be empathetic but factual.";
 
+const LANG_LABELS: Record<LangCode, string> = {
+  en: "English",
+  es: "Spanish",
+  fr: "French",
+  am: "Amharic",
+  zh: "Chinese (Simplified)",
+  ko: "Korean",
+};
+
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
-const model = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash",
-  systemInstruction: SYSTEM_INSTRUCTION,
-});
+const getModel = (lang: LangCode) => {
+  const langSuffix =
+    lang === "en"
+      ? ""
+      : ` Always respond in ${LANG_LABELS[lang]}.`;
+  return genAI.getGenerativeModel({
+    model: "gemini-2.5-flash",
+    systemInstruction: BASE_INSTRUCTION + langSuffix,
+  });
+};
 
 const FALLBACK_RESPONSES: Record<string, string> = {
   snap:
@@ -140,25 +156,38 @@ const buildScreenerResult = (state: ScreenerState): string => {
 
 // --- Component ---
 
-const WELCOME: Message = {
-  role: "assistant",
-  content:
-    "Hi! I'm EquityGuide, your AI-powered assistant for navigating food, medical, and community resources across D.C. How can I help?",
-  quickReplies: [
-    { label: "Check my SNAP eligibility", value: "__screener__" },
-    { label: "What's the 80-hour rule?", value: "What is the 80-hour work rule?" },
-    { label: "Find health resources", value: "Where can I find healthcare in DC?" },
-  ],
-};
-
 const AIChatBot = ({ fabOffset = false }: { fabOffset?: boolean }) => {
+  const { lang, t } = useLang();
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([WELCOME]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [screener, setScreener] = useState<ScreenerState | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
-  const chatRef = useRef<ReturnType<typeof model.startChat> | null>(null);
+  const chatRef = useRef<ReturnType<ReturnType<typeof getModel>["startChat"]> | null>(null);
+  const modelRef = useRef(getModel(lang));
+  const langRef = useRef(lang);
+
+  const makeWelcome = (): Message => ({
+    role: "assistant",
+    content: t("chat.welcome"),
+    quickReplies: [
+      { label: t("chat.screener"), value: "__screener__" },
+      { label: t("chat.work"), value: "What is the 80-hour work rule?" },
+      { label: t("chat.health"), value: "Where can I find healthcare in DC?" },
+    ],
+  });
+
+  const [messages, setMessages] = useState<Message[]>(() => [makeWelcome()]);
+
+  useEffect(() => {
+    if (lang !== langRef.current) {
+      langRef.current = lang;
+      modelRef.current = getModel(lang);
+      chatRef.current = null;
+      setMessages([makeWelcome()]);
+      setScreener(null);
+    }
+  }, [lang]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -166,8 +195,9 @@ const AIChatBot = ({ fabOffset = false }: { fabOffset?: boolean }) => {
 
   const getOrCreateChat = () => {
     if (!chatRef.current) {
+      const welcome = makeWelcome();
       const history = messages
-        .filter((m) => m !== WELCOME)
+        .filter((m) => m !== welcome && m.role !== undefined)
         .map((m) => ({
           role: m.role === "user" ? ("user" as const) : ("model" as const),
           parts: [{ text: m.content }],
@@ -176,7 +206,7 @@ const AIChatBot = ({ fabOffset = false }: { fabOffset?: boolean }) => {
       const firstUserIdx = history.findIndex((m) => m.role === "user");
       const validHistory = firstUserIdx >= 0 ? history.slice(firstUserIdx) : [];
 
-      chatRef.current = model.startChat({ history: validHistory });
+      chatRef.current = modelRef.current.startChat({ history: validHistory });
     }
     return chatRef.current;
   };
@@ -431,7 +461,7 @@ const AIChatBot = ({ fabOffset = false }: { fabOffset?: boolean }) => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && send()}
-                placeholder="Ask about SNAP, Medicaid, benefits..."
+                placeholder={t("chat.placeholder")}
                 className="flex-1 bg-secondary rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 disabled={loading}
               />

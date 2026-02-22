@@ -55,6 +55,42 @@
     --sidebar-border: 220 15% 18%;
     --sidebar-ring: 216 100% 33%;
   }
+
+  .dark {
+    --background: 222 20% 8%;
+    --foreground: 210 20% 92%;
+
+    --card: 222 18% 11%;
+    --card-foreground: 210 20% 92%;
+
+    --popover: 222 18% 11%;
+    --popover-foreground: 210 20% 92%;
+
+    --primary: 216 90% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 15% 16%;
+    --secondary-foreground: 210 15% 85%;
+
+    --muted: 220 12% 18%;
+    --muted-foreground: 215 12% 55%;
+
+    --accent: 216 75% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 20%;
+    --input: 220 15% 20%;
+    --ring: 216 90% 55%;
+
+    --pin-food: 142 70% 50%;
+    --pin-health: 0 72% 58%;
+    --pin-community: 216 100% 60%;
+    --glass: 222 18% 11% / 0.85;
+    --glass-border: 220 15% 22% / 0.6;
+  }
 }
 
 @layer base {
@@ -83,6 +119,10 @@
     background: hsla(0, 0%, 100%, 0.92);
     backdrop-filter: blur(24px);
     border: 1px solid hsla(var(--glass-border));
+  }
+
+  .dark .glass-strong {
+    background: hsla(222, 18%, 11%, 0.92);
   }
 
   .text-gradient {
@@ -116,6 +156,35 @@
     animation: float 3s ease-in-out infinite;
   }
 
+  @keyframes drift {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(30px, -20px) scale(1.05); }
+    66% { transform: translate(-20px, 15px) scale(0.95); }
+  }
+
+  @keyframes drift-reverse {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(-25px, 20px) scale(0.95); }
+    66% { transform: translate(15px, -25px) scale(1.05); }
+  }
+
+  @keyframes drift-slow {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(20px, 10px) scale(1.03); }
+  }
+
+  .animate-drift {
+    animation: drift 12s ease-in-out infinite;
+  }
+
+  .animate-drift-reverse {
+    animation: drift-reverse 15s ease-in-out infinite;
+  }
+
+  .animate-drift-slow {
+    animation: drift-slow 18s ease-in-out infinite;
+  }
+
   @keyframes scan {
     0% { transform: translateY(-100%); }
     100% { transform: translateY(100%); }
@@ -140,7 +209,9 @@
 
 /* Leaflet popup styling overrides */
 .leaflet-popup-content-wrapper {
-  @apply rounded-xl shadow-lg border border-border/50 bg-white;
+  @apply rounded-xl shadow-lg border border-border/50;
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
   padding: 0;
 }
 .leaflet-popup-content {
@@ -148,5 +219,5 @@
   font-family: 'Inter', system-ui, sans-serif;
 }
 .leaflet-popup-tip {
-  @apply bg-white;
+  background: hsl(var(--card));
 }

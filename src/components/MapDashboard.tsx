@@ -17,6 +17,9 @@ import {
 } from "lucide-react";
 import Papa from "papaparse";
 import L from "leaflet";
+import { toast } from "sonner";
+import { useThemeContext } from "@/hooks/theme-context";
+import { useLang } from "@/hooks/lang-context";
 import "leaflet/dist/leaflet.css";
 
 // Custom user-location marker icon
@@ -284,7 +287,12 @@ const MARKER_COLORS = {
 };
 
 // --- Main component ---
+const TILE_LIGHT = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+const TILE_DARK = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+
 const MapDashboard = ({ activeFilters, searchLocation, onClearSearch }: MapDashboardProps) => {
+  const { isDark } = useThemeContext();
+  const { t } = useLang();
   const [pins, setPins] = useState<ResourcePin[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailPin, setDetailPin] = useState<ResourcePin | null>(null);
@@ -297,7 +305,12 @@ const MapDashboard = ({ activeFilters, searchLocation, onClearSearch }: MapDashb
           parseSnapCsv(),
           parseHealthCsv(),
         ]);
-        setPins([...snap, ...health]);
+        const all = [...snap, ...health];
+        setPins(all);
+        toast.success(`${all.length} resources loaded across D.C.`, {
+          description: "SNAP retailers & healthcare facilities",
+          duration: 3000,
+        });
       } catch (err) {
         console.error("Failed to load CSV data:", err);
       } finally {
@@ -354,7 +367,8 @@ const MapDashboard = ({ activeFilters, searchLocation, onClearSearch }: MapDashb
         attributionControl={false}
       >
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          key={isDark ? "dark" : "light"}
+          url={isDark ? TILE_DARK : TILE_LIGHT}
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
         />
 
@@ -419,14 +433,14 @@ const MapDashboard = ({ activeFilters, searchLocation, onClearSearch }: MapDashb
                     className="flex-1 text-[11px] font-semibold py-2 rounded-lg bg-primary text-primary-foreground hover:bg-accent transition-colors flex items-center justify-center gap-1"
                   >
                     <Navigation className="w-3 h-3" />
-                    Directions
+                    {t("directions")}
                   </a>
                   <button
                     onClick={() => setDetailPin(pin)}
                     className="flex-1 text-[11px] font-semibold py-2 rounded-lg bg-secondary text-secondary-foreground hover:bg-muted transition-colors flex items-center justify-center gap-1 border border-border"
                   >
                     <FileText className="w-3 h-3" />
-                    Details
+                    {t("details")}
                   </button>
                 </div>
               </div>
@@ -440,20 +454,20 @@ const MapDashboard = ({ activeFilters, searchLocation, onClearSearch }: MapDashb
         <div className="absolute bottom-4 left-4 z-10 glass rounded-xl px-3 py-2 flex items-center gap-2">
           <ShieldCheck className="w-3.5 h-3.5 text-primary" />
           <span className="text-xs font-medium text-foreground">
-            {filteredPins.length} verified resources
+            {filteredPins.length} {t("verified")}
           </span>
         </div>
       )}
 
       {/* Nearby resources panel */}
       {searchLocation && (
-        <div className="absolute bottom-0 left-0 right-0 z-10 max-h-[45%] flex flex-col bg-white/95 backdrop-blur-md border-t border-border/50 rounded-t-2xl shadow-2xl">
+        <div className="absolute bottom-0 left-0 right-0 z-10 max-h-[45%] flex flex-col bg-background/95 backdrop-blur-md border-t border-border/50 rounded-t-2xl shadow-2xl">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-primary" />
               <div>
                 <p className="text-sm font-display font-semibold text-foreground">
-                  Nearby Resources
+                  {t("nearby")}
                 </p>
                 <p className="text-[10px] text-muted-foreground">
                   {searchLocation.label}
@@ -639,13 +653,13 @@ const MapDashboard = ({ activeFilters, searchLocation, onClearSearch }: MapDashb
                 rel="noopener noreferrer"
                 className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-accent transition-colors text-center"
               >
-                Get Directions
+                {t("get.directions")}
               </a>
               <button
                 onClick={() => setDetailPin(null)}
                 className="flex-1 text-xs font-semibold py-2.5 rounded-lg bg-secondary text-secondary-foreground hover:bg-muted transition-colors border border-border"
               >
-                Close
+                {t("close")}
               </button>
             </div>
           </div>

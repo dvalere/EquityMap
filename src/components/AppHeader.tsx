@@ -1,6 +1,8 @@
-import { ChevronDown, ChevronUp, Search, LocateFixed, Loader2, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, LocateFixed, Loader2, X, Sun, Moon, Globe } from "lucide-react";
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useThemeContext } from "@/hooks/theme-context";
+import { useLang, LANGUAGES } from "@/hooks/lang-context";
 
 interface AppHeaderProps {
   onSearchResult?: (lat: number, lng: number, label: string) => void;
@@ -10,7 +12,10 @@ interface AppHeaderProps {
 
 const AppHeader = ({ onSearchResult, onClearSearch, hasActiveSearch }: AppHeaderProps) => {
   const navigate = useNavigate();
+  const { isDark, toggle: toggleTheme } = useThemeContext();
+  const { lang, setLang, t } = useLang();
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -92,7 +97,7 @@ const AppHeader = ({ onSearchResult, onClearSearch, hasActiveSearch }: AppHeader
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search an address..."
+                placeholder={t("search.placeholder")}
                 className="w-full pl-8 pr-3 py-2 text-xs bg-secondary/80 rounded-lg border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
               />
             </div>
@@ -128,6 +133,43 @@ const AppHeader = ({ onSearchResult, onClearSearch, hasActiveSearch }: AppHeader
                 <LocateFixed className="w-3.5 h-3.5 text-primary" />
               )}
             </button>
+            <div className="relative">
+              <button
+                onClick={() => setLangOpen(!langOpen)}
+                className="p-2 rounded-lg hover:bg-secondary transition-colors flex items-center gap-1"
+                title="Change language"
+              >
+                <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-[10px] font-medium text-muted-foreground uppercase">{lang}</span>
+              </button>
+              {langOpen && (
+                <div className="absolute right-0 top-full mt-1 w-36 glass-strong rounded-xl shadow-xl border border-border/50 py-1 z-50">
+                  {LANGUAGES.map((l) => (
+                    <button
+                      key={l.code}
+                      onClick={() => { setLang(l.code); setLangOpen(false); }}
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-secondary transition-colors flex items-center justify-between ${
+                        lang === l.code ? "text-primary font-semibold" : "text-foreground"
+                      }`}
+                    >
+                      <span>{l.native}</span>
+                      {lang === l.code && <span className="text-primary">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg hover:bg-secondary transition-colors"
+              title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {isDark ? (
+                <Sun className="w-3.5 h-3.5 text-yellow-400" />
+              ) : (
+                <Moon className="w-3.5 h-3.5 text-muted-foreground" />
+              )}
+            </button>
             <button
               onClick={() => setAboutOpen(!aboutOpen)}
               className="p-2 rounded-lg hover:bg-secondary transition-colors"
@@ -153,11 +195,9 @@ const AppHeader = ({ onSearchResult, onClearSearch, hasActiveSearch }: AppHeader
         {aboutOpen && (
           <div className="px-4 pb-4 border-t border-border/50">
             <div className="mt-3 space-y-2">
-              <h3 className="text-sm font-display font-semibold text-foreground">About EquityMap</h3>
+              <h3 className="text-sm font-display font-semibold text-foreground">{t("about.title")}</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                EquityMap helps D.C. residents navigate "Benefit Deserts" inspired by the 2026 federal budget changes. 
-                Using AI and verified public data, EquityMap connects communities with food assistance, 
-                healthcare, and essential resources — because everyone deserves equitable access.
+                {t("about.body")}
               </p>
               <div className="flex items-center gap-2 pt-1">
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-accent-foreground border border-primary/30">AI-Powered</span>
@@ -172,11 +212,11 @@ const AppHeader = ({ onSearchResult, onClearSearch, hasActiveSearch }: AppHeader
       <div className="fixed top-16 left-3 z-20 glass rounded-xl px-3 py-2.5 space-y-1.5">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-pin-food" />
-          <span className="text-[11px] text-foreground font-medium">Food / SNAP</span>
+          <span className="text-[11px] text-foreground font-medium">{t("legend.food")}</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-pin-health" />
-          <span className="text-[11px] text-foreground font-medium">Healthcare</span>
+          <span className="text-[11px] text-foreground font-medium">{t("legend.health")}</span>
         </div>
       </div>
     </>
